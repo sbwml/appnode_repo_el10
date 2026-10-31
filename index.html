@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AppNode RHEL 10 特供版 - Linux 服务器集群管理面板</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f7f9fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 40px 20px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .page-header {
+            margin-bottom: 25px;
+        }
+        .title-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .logo-img {
+            height: 32px;
+            width: auto;
+            display: block;
+        }
+        .badge {
+            background-color: #383838;
+            color: #fff;
+            font-size: 11px;
+            font-weight: normal;
+            padding: 2px 10px;
+            border-radius: 12px;
+            line-height: 1.5;
+            white-space: nowrap;
+        }
+        .page-header p {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        .panel {
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 14px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            background: #fafbfc;
+            border-bottom: 1px solid #eaecef;
+        }
+        .panel-header-blue {
+            border-top: 3px solid #3498db;
+            color: #2980b9;
+        }
+        .panel-header-green {
+            border-top: 3px solid #27ae60;
+            color: #27ae60;
+        }
+        .panel-body {
+            padding: 20px;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .info-row:last-child {
+            margin-bottom: 0;
+        }
+        .info-label {
+            width: 90px;
+            color: #666;
+            flex-shrink: 0;
+            font-weight: 500;
+        }
+        .info-content {
+            color: #333;
+            flex-grow: 1;
+            min-width: 0;
+        }
+        .select-box {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+            color: #333;
+            outline: none;
+            min-width: 260px;
+            max-width: 100%;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .select-box:focus {
+            border-color: #27ae60;
+        }
+        .code-container {
+            position: relative;
+            background-color: #282c34;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            overflow: hidden;
+        }
+        .code-wrapper {
+            position: relative;
+            flex-grow: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+        }
+        .code-text {
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            font-size: 13px;
+            color: #abb2bf;
+            word-break: break-all;
+            user-select: all;
+            line-height: 1.5;
+            transition: filter 0.3s ease, opacity 0.3s ease;
+        }
+        .code-text.blurred {
+            filter: blur(6px);
+            opacity: 0.45;
+            user-select: none;
+            pointer-events: none;
+        }
+        .blur-mask-tip {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #e5c07b;
+            font-size: 12.5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            user-select: none;
+            z-index: 2;
+            width: 100%;
+        }
+        .blur-mask-tip:hover {
+            color: #ffd68a;
+            text-decoration: underline;
+        }
+        .blur-mask-tip.hidden {
+            display: none;
+        }
+        .copy-btn {
+            background-color: #4b5263;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #fff;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            z-index: 3;
+        }
+        .copy-btn:hover {
+            background-color: #5c6370;
+        }
+        .copy-btn.copied {
+            background-color: #27ae60;
+            color: #fff;
+        }
+        .alert-box {
+            background-color: #fff8e6;
+            border: 1px solid #ffe58f;
+            border-left: 4px solid #faad14;
+            border-radius: 4px;
+            padding: 12px 16px;
+            margin-top: 18px;
+            font-size: 13.5px;
+            color: #d46b08;
+            line-height: 1.7;
+        }
+        .alert-box strong {
+            color: #ad4e00;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+            backdrop-filter: blur(2px);
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: #fff;
+            border-radius: 8px;
+            max-width: 560px;
+            width: 100%;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            animation: modalFadeIn 0.2s ease-out;
+        }
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .modal-header {
+            padding: 16px 20px;
+            background: #fafbfc;
+            border-bottom: 1px solid #eaecef;
+            border-top: 3px solid #e67e22;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #d35400;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            line-height: 1;
+            color: #999;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+        .modal-close:hover {
+            color: #555;
+        }
+        .modal-body {
+            padding: 20px;
+            font-size: 13.5px;
+            color: #444;
+            max-height: 62vh;
+            overflow-y: auto;
+            line-height: 1.75;
+        }
+        .modal-body p {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+        .modal-body p:last-child {
+            margin-bottom: 0;
+        }
+        .modal-body strong {
+            color: #222;
+        }
+        .modal-footer {
+            padding: 14px 20px;
+            background: #fafbfc;
+            border-top: 1px solid #eaecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        .btn-cancel {
+            padding: 8px 18px;
+            font-size: 13.5px;
+            border: 1px solid #d9d9d9;
+            background: #fff;
+            color: #555;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-cancel:hover {
+            background: #f5f5f5;
+            border-color: #c0c0c0;
+        }
+        .btn-confirm {
+            padding: 8px 18px;
+            font-size: 13.5px;
+            border: none;
+            background: #27ae60;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .btn-confirm:hover {
+            background: #219150;
+        }
+        @media screen and (max-width: 640px) {
+            body {
+                padding: 20px 14px;
+            }
+            .panel-header {
+                padding: 12px 16px;
+                font-size: 15px;
+            }
+            .panel-body {
+                padding: 16px;
+            }
+            .info-row {
+                flex-direction: column;
+                margin-bottom: 16px;
+            }
+            .info-label {
+                width: 100%;
+                margin-bottom: 6px;
+            }
+            .select-box {
+                width: 100%;
+                min-width: 100%;
+            }
+            .code-container {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 14px;
+            }
+            .copy-btn {
+                margin-top: 10px;
+                width: 100%;
+                padding: 10px;
+                text-align: center;
+            }
+            .alert-box {
+                font-size: 13px;
+                padding: 10px 14px;
+            }
+            .modal-footer {
+                flex-direction: column-reverse;
+            }
+            .btn-cancel, .btn-confirm {
+                width: 100%;
+                padding: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="page-header">
+            <div class="title-wrapper">
+                <img src="/logo.png" alt="AppNode" class="logo-img">
+                <span class="badge">RHEL 10 特供版</span>
+            </div>
+            <p>鉴于 AppNode 官方（appnode.com）已因业务调整正式停止运营服务，本版本作为独立维护的社区技术延续版，旨在为习惯使用 AppNode 的存量用户提供 Red Hat Enterprise Linux 10 (EL10) 环境的平滑过渡与兼容适配支持。</p>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header panel-header-blue">系统要求</div>
+            <div class="panel-body">
+                <div class="info-row">
+                    <div class="info-label">操作系统：</div>
+                    <div class="info-content">
+                        <strong>RHEL 10 64位</strong>（以及兼容的二进制衍生版本）
+                    </div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">内存要求：</div>
+                    <div class="info-content">建议可用内存在 512MB 以上。</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header panel-header-green">安装命令</div>
+            <div class="panel-body">
+                <div class="info-row">
+                    <div class="info-label">安装配置：</div>
+                    <div class="info-content">
+                        <select id="installType" class="select-box" onchange="updateCommand()">
+                            <option value="ctrl">仅安装控制中心</option>
+                            <option value="both">同时安装控制中心和受控端</option>
+                            <option value="agent">仅安装受控端</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="info-row" style="margin-top: 16px;">
+                    <div class="info-label">执行命令：</div>
+                    <div class="info-content">
+                        <div style="color: #666; margin-bottom: 6px;">
+                            请使用 SSH 工具连接到您的 Linux 服务器后，执行以下命令开始安装：
+                        </div>
+                        
+                        <div class="code-container">
+                            <div class="code-wrapper">
+                                <span class="code-text blurred" id="commandText">bash -c "$(curl -sS https://************************************)"</span>
+                                <div class="blur-mask-tip" id="blurMaskTip" onclick="handleCopyButtonClick()">
+                                    🔒 点击查看并同意免责声明以解锁安装命令
+                                </div>
+                            </div>
+                            <button class="copy-btn" id="copyBtn" onclick="handleCopyButtonClick()">复制命令</button>
+                        </div>
+
+                        <div class="alert-box">
+                            <div><strong>提示：</strong>ccenter 内置的安装受控端功能暂不可用，如需添加节点请先在节点服务器执行“仅安装受控端”命令。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="disclaimerModal" onclick="handleOverlayClick(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <span class="modal-title">使用须知与免责声明</span>
+                <button class="modal-close" onclick="closeDisclaimerModal()" aria-label="关闭">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>在获取并执行本安装脚本及相关软件包之前，请您务必仔细阅读并充分理解以下条款：</p>
+                <p><strong>1. 项目背景与非官方声明：</strong>鉴于 AppNode 官方（https://www.appnode.com/）已正式宣布“因公司业务调整停止运营服务”，原官方源及支持通道均已归档。本页面所提供的“AppNode RHEL 10 特供版”系独立于原官方团队的第三方兼容性维护版本，旨在延续经典工具在新一代 EL10 系统上的生命力。</p>
+                <p><strong>2. 免费授权与非商业使用限制：</strong>本非官方适配版本秉持技术共享精神，<strong>完全免费向公众提供使用</strong>，且仅限用于个人技术研究、存量环境过渡及学习交流目的。严禁任何组织或个人将该版本（包括但不限于安装脚本、RPM 软件包、镜像源及相关衍生品）用于任何形式的商业化牟利行为（包括但不限于：二次加价售卖、有偿代安装服务、捆绑商业产品销售或变相收费分发等）。若违反本条规定进行商业化使用，由此产生的一切法律纠纷、版权争议及侵权责任均由违规行为人独立承担，与本适配版维护者无关。</p>
+                <p><strong>3. 无质量担保（“按原样”提供）：</strong>受限于软件底层架构及系统环境的复杂性，本软件及其关联脚本按“原样（AS-IS）”提供，不附带任何明示或暗示的担保。维护者无法保证软件源代码、二进制程序及安装脚本完全不存在缺陷（Bug）、漏洞、兼容性冲突或未知运行错误，亦不对服务的绝对稳定性、安全性及特定用途适用性作任何承诺。</p>
+                <p><strong>4. 责任限制与免责：</strong>在任何情况下，因下载、安装、配置或使用本软件及脚本所引发的任何直接、间接、偶然、特殊或衍生性损害（包括但不限于：服务器系统异常或崩溃、数据丢失或损毁、业务中断、安全事件、经济损失或第三方索赔等），均由使用者自行承担全部风险与责任，与本页面提供者及脚本维护者本人无关，本人概不承担任何法律及连带赔偿责任。</p>
+                <p><strong>5. 生产环境风险提示：</strong>强烈建议您在部署前对服务器重要数据进行完整备份，并优先在非生产环境中完成充分的兼容性与稳定性验证。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeDisclaimerModal()">不同意并取消</button>
+                <button class="btn-confirm" onclick="confirmAndCopy()">我已阅读并同意，复制命令</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let hasAgreed = false;
+
+        const commands = {
+            ctrl: 'bash -c "$(curl -sS https://hook.cooluc.com/appnode-install.sh)"',
+            both: 'INSTALL_AGENT=1 bash -c "$(curl -sS https://hook.cooluc.com/appnode-install.sh)"',
+            agent: 'ONLY_AGENT=1 bash -c "$(curl -sS https://hook.cooluc.com/appnode-install.sh)"'
+        };
+
+        const maskedCommands = {
+            ctrl: 'bash -c "$(curl -sS https://************************************)"',
+            both: 'INSTALL_AGENT=1 bash -c "$(curl -sS https://************************************)"',
+            agent: 'ONLY_AGENT=1 bash -c "$(curl -sS https://************************************)"'
+        };
+
+        function updateCommand() {
+            const select = document.getElementById('installType');
+            const commandText = document.getElementById('commandText');
+            
+            if (hasAgreed) {
+                commandText.innerText = commands[select.value];
+            } else {
+                commandText.innerText = maskedCommands[select.value];
+            }
+            
+            const copyBtn = document.getElementById('copyBtn');
+            copyBtn.innerText = '复制命令';
+            copyBtn.classList.remove('copied');
+        }
+
+        function handleCopyButtonClick() {
+            if (!hasAgreed) {
+                showDisclaimerModal();
+            } else {
+                executeCopy();
+            }
+        }
+
+        function showDisclaimerModal() {
+            document.getElementById('disclaimerModal').classList.add('active');
+        }
+
+        function closeDisclaimerModal() {
+            document.getElementById('disclaimerModal').classList.remove('active');
+        }
+
+        function handleOverlayClick(event) {
+            if (event.target.id === 'disclaimerModal') {
+                closeDisclaimerModal();
+            }
+        }
+
+        function confirmAndCopy() {
+            hasAgreed = true;
+            
+            const select = document.getElementById('installType');
+            const commandText = document.getElementById('commandText');
+            const blurMaskTip = document.getElementById('blurMaskTip');
+            
+            commandText.innerText = commands[select.value];
+            commandText.classList.remove('blurred');
+            blurMaskTip.classList.add('hidden');
+            
+            closeDisclaimerModal();
+            executeCopy();
+        }
+
+        function executeCopy() {
+            const select = document.getElementById('installType');
+            const textToCopy = commands[select.value];
+            const copyBtn = document.getElementById('copyBtn');
+
+            const setSuccessState = () => {
+                copyBtn.innerText = '已复制！';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.innerText = '复制命令';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(setSuccessState).catch(() => {
+                    fallbackCopy(textToCopy, setSuccessState);
+                });
+            } else {
+                fallbackCopy(textToCopy, setSuccessState);
+            }
+        }
+
+        function fallbackCopy(text, onSuccess) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful && onSuccess) onSuccess();
+                else alert('复制失败，请手动复制');
+            } catch (err) {
+                alert('复制失败，请手动复制');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeDisclaimerModal();
+            }
+        });
+    </script>
+</body>
+</html>
