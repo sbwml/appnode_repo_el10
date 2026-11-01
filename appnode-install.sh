@@ -55,15 +55,16 @@ systemctl disable firewalld > /dev/null 2>&1
 
 echo -e "\033[32m* Installing repository epel...\033[0m"
 dnf install -y epel-release
+/usr/bin/crb enable
 
 if [[ "$INSTALL_AGENT" == "1" || "$ONLY_AGENT_MODE" == "1" ]]; then
   echo -e "${GREEN_COLOR}>> Updating repository for AppNode Agent${RES}\r\n"
   echo -e "\033[32m* Installing repository appnode-agent...\033[0m"
-  dnf install -y https://hook.cooluc.com/release/appnode-agent-release-1.2-1.el10.x86_64.rpm
+  dnf install -y https://appnode.cooluc.com/release/appnode-agent-release-1.2-1.el10.x86_64.rpm
   echo -e "\r\n\033[32m* Installing repository appnode-extras...\033[0m"
-  dnf install -y https://hook.cooluc.com/release/appnode-extras-release-1.1-1.el10.noarch.rpm
+  dnf install -y https://appnode.cooluc.com/release/appnode-extras-release-1.1-1.el10.noarch.rpm
   echo -e "\r\n\033[32m* Installing repository appnode...\033[0m"
-  dnf install -y https://hook.cooluc.com/release/appnode-release-1.1-1.el10.noarch.rpm
+  dnf install -y https://appnode.cooluc.com/release/appnode-release-1.1-1.el10.noarch.rpm
 
   echo -e "\r\n${GREEN_COLOR}>> Installing AppNode Agent${RES}\r\n"
   dnf install -y appnode-agent appnode-app-sshd sqlite3
@@ -79,7 +80,7 @@ fi
 if [ "$ONLY_AGENT_MODE" != "1" ]; then
   echo -e "${GREEN_COLOR}>> Updating repository for AppNode CCenter${RES}\r\n\r\n"
   echo -e "\033[32m* Installing repository appnode-ccenter...\033[0m"
-  dnf install -y https://hook.cooluc.com/release/appnode-ccenter-release-1.2-1.el10.x86_64.rpm
+  dnf install -y https://appnode.cooluc.com/release/appnode-ccenter-release-1.2-1.el10.x86_64.rpm
 
   echo -e "\r\n${GREEN_COLOR}>> Installing AppNode CCenter${RES}\r\n"
   dnf install -y appnode-ccenter
