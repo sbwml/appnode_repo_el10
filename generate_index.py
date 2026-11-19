@@ -1,5 +1,6 @@
 import os
 import html
+import subprocess
 import urllib.parse
 from datetime import datetime
 
@@ -206,7 +207,7 @@ function sortTable(colIndex, type) {
         }
     });
 
-    if (parentRow) tbody.appendChild(parentRow);
+    if (parentRow) tbody.prepend(parentRow);
     rows.forEach(row => tbody.appendChild(row));
 }
 </script>
@@ -238,6 +239,55 @@ def format_size(size_bytes):
         i += 1
     return f"{size_bytes:.2f}".rstrip('0').rstrip('.') + f" {units[i]}"
 
+def get_git_timestamps(base_dir):
+    """
+    一次性读取 Git 提交历史，返回：
+    - file_times: {相对于 base_dir 的 posix 路径: 最新提交时间戳(int)}
+    - dir_times:  {相对于 base_dir 的 posix 路径: 其内最新文件的提交时间戳(int)}
+    """
+    file_times = {}
+    dir_times = {}
+
+    try:
+        result = subprocess.run(
+            ["git", "log", "--format=%ct", "--name-only"],
+            cwd=base_dir,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+        )
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return file_times, dir_times
+
+    current_ts = None
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.isdigit():
+            current_ts = int(line)
+        elif current_ts is not None:
+            rel_file = line.replace("\\", "/")
+            if rel_file not in file_times:
+                file_times[rel_file] = current_ts
+
+            parts = rel_file.split("/")[:-1]
+            prefix = ""
+            for p in parts:
+                prefix = f"{prefix}/{p}" if prefix else p
+                if prefix not in dir_times or current_ts > dir_times[prefix]:
+                    dir_times[prefix] = current_ts
+
+    return file_times, dir_times
+
+def get_formatted_time(rel_posix_path, fs_path, ts_map, is_dir=False):
+    ts = ts_map.get(rel_posix_path)
+    if ts is None:
+        ts = os.path.getmtime(fs_path)
+    return datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+
 def make_breadcrumbs(rel_path):
     html_snippets = ['<a href="/">Home</a>']
     if rel_path == ".":
@@ -253,28 +303,33 @@ def make_breadcrumbs(rel_path):
     return ' <span class="separator">/</span> '.join(html_snippets)
 
 def generate_repo_indexes(base_dir):
-    for root, dirs, files in os.walk(base_dir):
+    abs_base = os.path.abspath(base_dir)
+    file_times, dir_times = get_git_timestamps(abs_base)
+
+    for root, dirs, files in os.walk(abs_base):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
-        rel_path = os.path.relpath(root, base_dir)
-        if rel_path == ".":
-            display_path = "/"
-        else:
-            display_path = f"/{rel_path.replace(os.sep, '/')}/"
+        rel_path = os.path.relpath(root, abs_base)
+        rel_posix_root = "" if rel_path == "." else rel_path.replace(os.sep, "/")
+
         breadcrumbs_html = make_breadcrumbs(rel_path)
         parent_row = ""
         if rel_path != ".":
             parent_row = f'<tr><td><a class="item-link parent-dir" href="../">{ICON_FOLDER} ..</a></td><td class="size">-</td><td class="date">-</td></tr>'
+
         rows = []
         for d in sorted(dirs):
             dir_path = os.path.join(root, d)
-            mtime = datetime.fromtimestamp(os.path.getmtime(dir_path)).strftime('%Y-%m-%d %H:%M:%S')
+            dir_posix = f"{rel_posix_root}/{d}" if rel_posix_root else d
+            mtime = get_formatted_time(dir_posix, dir_path, dir_times, is_dir=True)
             quoted_name = urllib.parse.quote(d)
             rows.append(f'<tr><td><a class="item-link" href="{quoted_name}/">{ICON_FOLDER} {html.escape(d)}/</a></td><td class="size">-</td><td class="date">{mtime}</td></tr>')
+
         for f in sorted(files):
             if f in EXCLUDE_FILES or f.startswith('.'):
                 continue
             file_path = os.path.join(root, f)
-            mtime = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+            file_posix = f"{rel_posix_root}/{f}" if rel_posix_root else f
+            mtime = get_formatted_time(file_posix, file_path, file_times, is_dir=False)
             size_bytes = os.path.getsize(file_path)
             formatted_size = format_size(size_bytes)
             quoted_name = urllib.parse.quote(f)
